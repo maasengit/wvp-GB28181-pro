@@ -2,6 +2,7 @@ package com.genersoft.iot.vmp.conf.security;
 
 import com.genersoft.iot.vmp.conf.security.dto.JwtUser;
 import org.jose4j.json.JsonUtil;
+import org.jose4j.jwk.JsonWebKey;
 import org.jose4j.jwk.RsaJsonWebKey;
 import org.jose4j.jws.AlgorithmIdentifiers;
 import org.jose4j.jws.JsonWebSignature;
@@ -15,7 +16,14 @@ import org.jose4j.lang.JoseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
@@ -28,14 +36,22 @@ public class JwtUtils {
 
     private static final long EXPIRED_THRESHOLD = 10 * 60;
 
-    private static final String keyId = "3e79646c4dbc408383a9eed09f2b85ae";
-    private static final String privateKeyStr = "{\"kty\":\"RSA\",\"kid\":\"3e79646c4dbc408383a9eed09f2b85ae\",\"alg\":\"RS256\",\"n\":\"gndmVdiOTSJ5et2HIeTM5f1m61x5ojLUi5HDfvr-jRrESQ5kbKuySGHVwR4QhwinpY1wQqBnwc80tx7cb_6SSqsTOoGln6T_l3k2Pb54ClVnGWiW_u1kmX78V2TZOsVmZmwtdZCMi-2zWIyAdIEXE-gncIehoAgEoq2VAhaCURbJWro_EwzzQwNmCTkDodLAx4npXRd_qSu0Ayp0txym9OFovBXBULRvk4DPiy3i_bPUmCDxzC46pTtFOe9p82uybTehZfULZtXXqRm85FL9n5zkrsTllPNAyEGhgb0RK9sE5nK1m_wNNysDyfLC4EFf1VXTrKm14XNVjc2vqLb7Mw\",\"e\":\"AQAB\",\"d\":\"ed7U_k3rJ4yTk70JtRSIfjKGiEb67BO1TabcymnljKO7RU8nage84zZYuSu_XpQsHk6P1f0Gzxkicghm_Er-FrfVn2pp70Xu52z3yRd6BJUgWLDFk97ngScIyw5OiULKU9SrZk2frDpftNCSUcIgb50F8m0QAnBa_CdPsQKbuuhLv8V8tBAV7F_lAwvSBgu56wRo3hPz5dWH8YeXM7XBfQ9viFMNEKd21sP_j5C7ueUnXT66nBxe3ZJEU3iuMYM6D6dB_KW2GfZC6WmTgvGhhxJD0h7aYmfjkD99MDleB7SkpbvoODOqiQ5Epb7Nyh6kv5u4KUv2CJYtATLZkUeMkQ\",\"p\":\"uBUjWPWtlGksmOqsqCNWksfqJvMcnP_8TDYN7e4-WnHL4N-9HjRuPDnp6kHvCIEi9SEfxm7gNxlRcWegvNQr3IZCz7TnCTexXc5NOklB9OavWFla6u-s3Thn6Tz45-EUjpJr0VJMxhO-KxGmuTwUXBBp4vN6K2qV6rQNFmgkWzk\",\"q\":\"tW_i7cCec56bHkhITL_79dXHz_PLC_f7xlynmlZJGU_d6mqOKmLBNBbTMLnYW8uAFiFzWxDeDHh1o5uF0mSQR-Z1Fg35OftnpbWpy0Cbc2la5WgXQjOwtG1eLYIY2BD3-wQ1VYDBCvowr4FDi-sngxwLqvwmrJ0xjhi99O-Gzcs\",\"dp\":\"q1d5jE85Hz_6M-eTh_lEluEf0NtPEc-vvhw-QO4V-cecNpbrCBdTWBmr4dE3NdpFeJc5ZVFEv-SACyei1MBEh0ItI_pFZi4BmMfy2ELh8ptaMMkTOESYyVy8U7veDq9RnBcr5i1Nqr0rsBkA77-9T6gzdvycBZdzLYAkAmwzEvk\",\"dq\":\"q29A2K08Crs-jmp2Bi8Q_8QzvIX6wSBbwZ4ir24AO-5_HNP56IrPS0yV2GCB0pqCOGb6_Hz_koDvhtuYoqdqvMVAtMoXR3YJBUaVXPt65p4RyNmFwIPe31zHs_BNUTsXVRMw4c16mci03-Af1sEm4HdLfxAp6sfM3xr5wcnhcek\",\"qi\":\"rHPgVTyHUHuYzcxfouyBfb1XAY8nshwn0ddo81o1BccD4Z7zo5It6SefDHjxCAbcmbiCcXBSooLcY-NF5FMv3fg19UE21VyLQltHcVjRRp2tRs4OHcM8yaXIU2x6N6Z6BP2tOksHb9MOBY1wAQzFOAKg_G4Sxev6-_6ud6RISuc\"}";
-    private static final String publicKeyStr = "{\"kty\":\"RSA\",\"kid\":\"3e79646c4dbc408383a9eed09f2b85ae\",\"alg\":\"RS256\",\"n\":\"gndmVdiOTSJ5et2HIeTM5f1m61x5ojLUi5HDfvr-jRrESQ5kbKuySGHVwR4QhwinpY1wQqBnwc80tx7cb_6SSqsTOoGln6T_l3k2Pb54ClVnGWiW_u1kmX78V2TZOsVmZmwtdZCMi-2zWIyAdIEXE-gncIehoAgEoq2VAhaCURbJWro_EwzzQwNmCTkDodLAx4npXRd_qSu0Ayp0txym9OFovBXBULRvk4DPiy3i_bPUmCDxzC46pTtFOe9p82uybTehZfULZtXXqRm85FL9n5zkrsTllPNAyEGhgb0RK9sE5nK1m_wNNysDyfLC4EFf1VXTrKm14XNVjc2vqLb7Mw\",\"e\":\"AQAB\"}";
+    private static String privateKeyStr;
+    private static String publicKeyStr;
 
+    static {
+        try (BufferedReader reader = new BufferedReader(new FileReader("privateKey.json"));
+             BufferedReader reader2 = new BufferedReader(new FileReader("publicKey.json"))) {
+            privateKeyStr = reader.readLine();
+            publicKeyStr = reader2.readLine();
+        } catch (IOException e) {
+            logger.error("必须提供有效的公钥和私钥", e);
+        }
+    }
     /**
-     * token过期时间(分钟)
+     * token过期时间(分钟, 24小时)
      */
-    public static final long expirationTime = 30;
+    public static final long expirationTime = 1440;
 
     public static String createToken(String username, String password, Integer roleId) {
         try {
@@ -63,19 +79,18 @@ public class JwtUtils {
             claims.setAudience(AUDIENCE);
             //添加自定义参数,必须是字符串类型
             claims.setClaim("username", username);
-            claims.setClaim("password", password);
+            // claims.setClaim("password", password);
             claims.setClaim("roleId", roleId);
 
             //jws
             JsonWebSignature jws = new JsonWebSignature();
             //签名算法RS256
             jws.setAlgorithmHeaderValue(AlgorithmIdentifiers.RSA_USING_SHA256);
-            jws.setKeyIdHeaderValue(keyId);
             jws.setPayload(claims.toJson());
-
-            PrivateKey privateKey = new RsaJsonWebKey(JsonUtil.parseJson(privateKeyStr)).getPrivateKey();
+            RsaJsonWebKey jsonWebKey = new RsaJsonWebKey(JsonUtil.parseJson(privateKeyStr));
+            PrivateKey privateKey = jsonWebKey.getPrivateKey();
             jws.setKey(privateKey);
-
+            jws.setKeyIdHeaderValue(jsonWebKey.getKeyId());
             //get token
             String idToken = jws.getCompactSerialization();
             return idToken;
@@ -118,10 +133,10 @@ public class JwtUtils {
             }
 
             String username = (String) claims.getClaimValue("username");
-            String password = (String) claims.getClaimValue("password");
+            // String password = (String) claims.getClaimValue("password");
             Long roleId = (Long) claims.getClaimValue("roleId");
             jwtUser.setUserName(username);
-            jwtUser.setPassword(password);
+//            jwtUser.setPassword(password);
             jwtUser.setRoleId(roleId.intValue());
 
             return jwtUser;
@@ -137,5 +152,20 @@ public class JwtUtils {
             jwtUser.setStatus(JwtUser.TokenStatus.EXPIRED);
             return jwtUser;
         }
+    }
+
+    public static void main(String[] args) throws Exception {
+        KeyPair keyPair = KeyPairGenerator.getInstance("RSA").generateKeyPair();
+        RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
+        RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+        RsaJsonWebKey jsonWebKey = new RsaJsonWebKey(publicKey);
+        jsonWebKey.setKeyId("574146a4eeb5f559420c959378ee21b4");
+        jsonWebKey.setPrivateKey(privateKey);
+
+        System.out.println("Public JWK: " + jsonWebKey.toJson());
+        System.out.println("Private JWK: " + jsonWebKey.toJson(JsonWebKey.OutputControlLevel.INCLUDE_PRIVATE));
+
+        String token = createToken("user", "", 2);
+        verifyToken(token);
     }
 }

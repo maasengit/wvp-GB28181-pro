@@ -1,0 +1,17 @@
+server:
+  port: 18080
+spring:
+  application:
+    name: wvp-pro-test
+  cloud:
+    nacos:
+      discovery:
+        server-addr: pmc-register:8848
+      config:
+        server-addr: ${spring.cloud.nacos.discovery.server-addr}
+        file-extension: yml
+        name: ${spring.application.name}-${spring.profiles.active}.${spring.cloud.nacos.config.file-extension}
+        shared-configs:
+          - application-${spring.profiles.active}.${spring.cloud.nacos.config.file-extension}
+  profiles:
+    active: dev

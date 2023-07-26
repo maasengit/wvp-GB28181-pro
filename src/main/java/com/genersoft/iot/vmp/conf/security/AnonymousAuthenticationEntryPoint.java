@@ -27,7 +27,7 @@ public class    AnonymousAuthenticationEntryPoint implements AuthenticationEntry
         String jwt = request.getHeader(JwtUtils.getHeader());
         JwtUser jwtUser = JwtUtils.verifyToken(jwt);
         String username = jwtUser.getUserName();
-        UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(username, jwtUser.getPassword() );
+        UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(username, null);
         SecurityContextHolder.getContext().setAuthentication(token);
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("code", ErrorCode.ERROR401.getCode());
